@@ -135,7 +135,7 @@ int main(int argc, char *argv){
 	cudaMemcpy( counter, dev_counter, N * N * sizeof(int),cudaMemcpyDeviceToHost );
 	cudaMemcpy( streak, dev_streak, N * N * sizeof(int),cudaMemcpyDeviceToHost );
 
-    // TODO: print or save results
+    // print or save results
     printer(mat, counter, streak);
 
     cudaFree(dev_counter);
@@ -144,5 +144,5 @@ int main(int argc, char *argv){
 
     fclose(fin);
 
-    return;
+    return 0;
 }
