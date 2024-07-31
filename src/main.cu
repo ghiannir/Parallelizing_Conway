@@ -11,11 +11,43 @@ __global__ void game_iterations(int *dev_mat, int *dev_streak, int *dev_counter,
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-	#TODO
-	
+    int sum;
+    int streak = 0;
+    int prev = 0;
 
-	__syncthreads();
+    for(int i=0; i < iterations; i++){
+        if(streak > dev_streak[idx])
+            dev_streak[idx] = streak;
+        if(dev_mat[idx] && prev)
+            streak++;
+        if(!dev_mat[idx] && prev)
+            streak = 0;
+        if(dev_mat[idx])
+            dev_counter[idx]++;
+        prev = dev_mat[idx];
 
+        sum = tot_neighbours(idx, blockDim.x, dev_mat);
+
+        if(!prev && sum == 3)
+            dev_mat[idx] = 1;
+        else if (prev && (sum >= 4 || sum == 1)){
+            dev_mat[idx] = 0;
+        }
+
+
+	    __syncthreads();
+    }
+
+}
+
+
+__device__ int tot_neighbours(int idx, int block_dim, int *dev_mat){
+    int sum = dev_mat[idx-1] + dev_mat[idx+1];
+    for(int i=-1; i <= 1; i++){
+        sum += dev_mat[idx - block_dim + i];
+        sum += dev_mat[idx + block_dim + i];
+    }
+    return sum;
 }
 
 
