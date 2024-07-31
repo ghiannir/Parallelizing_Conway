@@ -3,29 +3,41 @@
 #include <cuda_runtime.h>
 
 #define INFILE "../input/input.txt"
-#define N 500
+#define N 1000
 #define ITER 500
 
 
-__global__ void game_iterations(int *dev_mat, int *dev_streak, int *dev_counter, int iterations)
-{   // TODO: manage idx
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+__global__ void game_iterations(int *dev_mat, int *dev_streak, int *dev_counter, int iterations, int dim)
+{   
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if(x > N || y > N)
+        return;
+
+    int idx = x * N + y;
 
     int sum;
     int streak = 0;
     int prev = 0;
+    int curr;
 
     for(int i=0; i < iterations; i++){
+        curr = dev_mat[idx];
+        // statistics upgrade
         if(streak > dev_streak[idx])
             dev_streak[idx] = streak;
-        if(dev_mat[idx] && prev)
+        if(curr && prev)
             streak++;
-        if(!dev_mat[idx] && prev)
+        if(!curr && prev)
             streak = 0;
-        if(dev_mat[idx])
+        if(curr)
             dev_counter[idx]++;
-        prev = dev_mat[idx];
+        prev = curr;
 
+        __syncthreads();
+
+        // board update
         sum = tot_neighbours(idx, blockDim.x, dev_mat);
 
         if(!prev && sum == 3)
@@ -34,8 +46,7 @@ __global__ void game_iterations(int *dev_mat, int *dev_streak, int *dev_counter,
             dev_mat[idx] = 0;
         }
 
-
-	    __syncthreads();
+	    
     }
 
 }
@@ -113,13 +124,11 @@ int main(int argc, char *argv){
     cudaMemcpy(dev_mat, mat, N * N * sizeof(int), cudaMemcpyHostToDevice);
 
     // TODO: device block distribution
-    dim3 blocks, threads;
-
-    blocks=dim3(1, 1, 1);
-    threads=dim3(N , N);
+    dim3 blockSize(N, N);
+    dim3 gridSize((N + blockSize.x - 1) / blockSize.x, (N + blockSize.y - 1) / blockSize.y);
 
     // launch kernel on GPU
-    game_iterations<<<blocks , threads>>>(dev_mat, dev_streak, dev_counter, ITER);
+    game_iterations<<<gridSize , blockSize>>>(dev_mat, dev_streak, dev_counter, ITER, N);
     
     // gather results
 	cudaMemcpy( mat, dev_mat, N * N * sizeof(int),cudaMemcpyDeviceToHost );
