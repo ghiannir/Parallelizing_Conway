@@ -18,19 +18,14 @@ __global__ void game_iterations(int *dev_mat, int *dev_streak, int *dev_counter,
     int idx = x * N + y;
 
     int sum;
-    int streak = 0;
     int prev = 0;
     int curr;
 
     for(int i=0; i < iterations; i++){
         curr = dev_mat[idx];
         // statistics upgrade
-        if(streak > dev_streak[idx])
-            dev_streak[idx] = streak;
         if(curr && prev)
-            streak++;
-        if(!curr && prev)
-            streak = 0;
+            dev_streak[idx]++;
         if(curr)
             dev_counter[idx]++;
         prev = curr;
