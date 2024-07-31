@@ -8,7 +8,7 @@
 
 
 __global__ void game_iterations(int *dev_mat, int *dev_streak, int *dev_counter, int iterations)
-{
+{   // TODO: manage idx
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     int sum;
@@ -51,22 +51,48 @@ __device__ int tot_neighbours(int idx, int block_dim, int *dev_mat){
 }
 
 
+void printer(int *mat, int *streak, int *counter){
+    printf("Final state of the board:\n");
+    for(int i=0; i < N; i++){
+        for(int j=0; j < N; j++){
+            printf("%d ", mat[i*N+j]);
+        }
+        printf("\n");
+    }
+    
+    printf("Overall count of alive generation for single cell:\n");
+    for(int i=0; i < N; i++){
+        for(int j=0; j < N; j++){
+            printf("%d ", counter[i*N+j]);
+        }
+        printf("\n");
+    }
+
+    printf("Maximum consecutive alive generations:\n");
+    for(int i=0; i < N; i++){
+        for(int j=0; j < N; j++){
+            printf("%d ", streak[i*N+j]);
+        }
+        printf("\n");
+    }
+}
+
 
 int main(int argc, char *argv){
-    int mat[N][N];
+    int mat[N*N];
     char c;
     FILE *fin = fopen(INFILE, "r");
-    int counter[N][N];
-    int streak[N][N];
+    int counter[N*N];
+    int streak[N*N];
     
     for(int i=0; i < N; i++){
         for (int j=0; j < N; j++){
             // reading of the input file and initialization of the matrix
-            fscanf(fin, "%d", &c);
+            fscanf(fin, "%c%*c", &c);
             if(c == 'X')
-                mat[j][i] = 1;
+                mat[N * i + j] = 1;
             else
-                mat[j][i] = 0;
+                mat[N * i + j] = 0;
         }
     }
 
@@ -86,26 +112,28 @@ int main(int argc, char *argv){
     cudaMalloc((void**)&dev_mat, N * N sizeof(int))
     cudaMemcpy(dev_mat, mat, N * N * sizeof(int), cudaMemcpyHostToDevice);
 
-    // device block distribution
+    // TODO: device block distribution
     dim3 blocks, threads;
 
     blocks=dim3(1, 1, 1);
-    threads=dim3(N * N, 1);
+    threads=dim3(N , N);
 
+    // launch kernel on GPU
     game_iterations<<<blocks , threads>>>(dev_mat, dev_streak, dev_counter, ITER);
-
+    
+    // gather results
 	cudaMemcpy( mat, dev_mat, N * N * sizeof(int),cudaMemcpyDeviceToHost );
 	cudaMemcpy( counter, dev_counter, N * N * sizeof(int),cudaMemcpyDeviceToHost );
 	cudaMemcpy( streak, dev_streak, N * N * sizeof(int),cudaMemcpyDeviceToHost );
 
     // TODO: print or save results
+    printer(mat, counter, streak);
 
     cudaFree(dev_counter);
     cudaFree(dev_mat);
     cudaFree(dev_streak);
 
     fclose(fin);
-    fclose(fout);
 
     return;
 }
