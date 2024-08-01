@@ -3,12 +3,11 @@
 #include <cuda_runtime.h>
 
 #define INFILE "../input/input.txt"
-#define N 1000
-#define ITER 500
+// #define N 1000
+// #define ITER 500
 
 
-__global__ void game_iterations(int *dev_mat, int *dev_streak, int *dev_counter, int iterations, int dim)
-{   
+__global__ void game_iterations(int *dev_mat, int *dev_streak, int *dev_counter, int iterations, int dim){   
     int x = blockIdx.x * blockDim.x + threadIdx.x;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -57,22 +56,34 @@ __device__ int tot_neighbours(int idx, int block_dim, int *dev_mat){
 }
 
 
-void printer(int *mat, int *streak, int *counter);
+void printer(int *mat, int *streak, int *counter, int N);
 
 
-int main(int argc, char *argv){
-    int mat[N*N];
+int main(void){
+    int n;
+    char *num_elements = getenv("N");
+    sscanf(num_elements, "%d", &n);
+    int iter;
+    char *num_iter = getenv("ITER");
+    sscanf(num_iter, "%d", &iter);
+
+    int *mat;
     FILE *fin = fopen(INFILE, "r");
-    int counter[N*N];
-    int streak[N*N];
+    int *counter;
+    int *streak;
+
+    // matrix allocation
+    mat = (int *)malloc(n*n*sizeof(int));
+    counter = (int *)malloc(n*n*sizeof(int));
+    streak = (int *)malloc(n*n*sizeof(int));
     
-    for(int i=0; i < N; i++){
-        for (int j=0; j < N; j++){
+    for(int i=0; i < n; i++){
+        for (int j=0; j < n; j++){
             // reading of the input file and initialization of the matrix
             if(fgetc(fin) == 'X')
-                mat[N * i + j] = 1;
+                mat[n * i + j] = 1;
             else
-                mat[N * i + j] = 0;
+                mat[n * i + j] = 0;
         }
     }
 
@@ -80,36 +91,40 @@ int main(int argc, char *argv){
     int *dev_counter;
     int *dev_streak;
 
-    cudaMalloc((void **)&dev_counter, N * N * sizeof(int));
-    cudaMalloc((void **)&dev_streak, N * N * sizeof(int));
+    cudaMalloc((void **)&dev_counter, n * n * sizeof(int));
+    cudaMalloc((void **)&dev_streak, n * n * sizeof(int));
 
-    cudaMemset(dev_counter, 0x0, N * N * sizeof(int));
-    cudaMemset(dev_streak, 0x0, N * N * sizeof(int));
+    cudaMemset(dev_counter, 0x0, n * n * sizeof(int));
+    cudaMemset(dev_streak, 0x0, n * n * sizeof(int));
 
     // copy input to device mem
     int *dev_mat;
 
-    cudaMalloc((void**)&dev_mat, N * N sizeof(int))
-    cudaMemcpy(dev_mat, mat, N * N * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&dev_mat, n * n sizeof(int))
+    cudaMemcpy(dev_mat, mat, n * n * sizeof(int), cudaMemcpyHostToDevice);
 
     // TODO: device block distribution
-    dim3 blockSize(N, N);
-    dim3 gridSize((N + blockSize.x - 1) / blockSize.x, (N + blockSize.y - 1) / blockSize.y);
+    dim3 blockSize(n, n);
+    dim3 gridSize((n + blockSize.x - 1) / blockSize.x, (n + blockSize.y - 1) / blockSize.y);
 
     // launch kernel on GPU
-    game_iterations<<<gridSize , blockSize>>>(dev_mat, dev_streak, dev_counter, ITER, N);
+    game_iterations<<<gridSize , blockSize>>>(dev_mat, dev_streak, dev_counter, iter, n);
     
     // gather results
-	cudaMemcpy( mat, dev_mat, N * N * sizeof(int),cudaMemcpyDeviceToHost );
-	cudaMemcpy( counter, dev_counter, N * N * sizeof(int),cudaMemcpyDeviceToHost );
-	cudaMemcpy( streak, dev_streak, N * N * sizeof(int),cudaMemcpyDeviceToHost );
-
-    // print or save results
-    printer(mat, counter, streak);
+	cudaMemcpy(mat, dev_mat, n * n * sizeof(int),cudaMemcpyDeviceToHost);
+	cudaMemcpy(counter, dev_counter, n * n * sizeof(int),cudaMemcpyDeviceToHost);
+	cudaMemcpy(streak, dev_streak, n * n * sizeof(int),cudaMemcpyDeviceToHost);
 
     cudaFree(dev_counter);
     cudaFree(dev_mat);
     cudaFree(dev_streak);
+
+    // print or save results
+    printer(mat, counter, streak, n);
+
+    free(mat);
+    free(counter);
+    free(streak);
 
     fclose(fin);
 
@@ -117,7 +132,7 @@ int main(int argc, char *argv){
 }
 
 
-void printer(int *mat, int *streak, int *counter){
+void printer(int *mat, int *streak, int *counter, int N){
     printf("Final state of the board:\n");
     for(int i=0; i < N; i++){
         for(int j=0; j < N; j++){
