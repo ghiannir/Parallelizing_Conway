@@ -32,7 +32,7 @@ __global__ void game_iterations(int *dev_mat, int *dev_streak, int *dev_counter,
         __syncthreads();
 
         // board update
-        sum = tot_neighbours(idx, blockDim.x, dev_mat);
+        sum = tot_neighbours(idx, dim, dev_mat);
 
         if(!prev && sum == 3)
             dev_mat[idx] = 1;
@@ -45,13 +45,40 @@ __global__ void game_iterations(int *dev_mat, int *dev_streak, int *dev_counter,
 
 }
 
-
+// TODO: farla piu leggibile
 __device__ int tot_neighbours(int idx, int block_dim, int *dev_mat){
-    int sum = dev_mat[idx-1] + dev_mat[idx+1];
-    for(int i=-1; i <= 1; i++){
-        sum += dev_mat[idx - block_dim + i];
-        sum += dev_mat[idx + block_dim + i];
+    int sum = 0;
+
+    // flags for border cells
+    int left=0, right=0, up=0, down=0;
+    
+    if(idx%block_dim == 0)
+        left = 1; 
+    else if((idx+1)%block_dim == 0)
+        right = 1;
+    if(idx-block_dim < 0)
+        up = 1;
+    else if(idx+block_dim >= n*n)
+        down=1;
+    // sum all existing nearby blocks vlaues
+    if(!up){
+        sum += dev_mat[idx-block_dim];
+        if(!left)
+            sum += dev_mat[idx-block_dim-1];
+        if(!up)
+            sum += dev_mat[idx-block_dim+1];
     }
+    if(!down){
+        sum += dev_mat[idx+block_dim];
+        if(!left)
+            sum += dev_mat[idx+block_dim-1];
+        if(!up)
+            sum += dev_mat[idx+block_dim+1];
+    }
+    if(!left)
+        sum += dev_mat[idx-1];
+    if(!up)
+        sum += dev_mat[idx+1];
     return sum;
 }
 
@@ -108,6 +135,7 @@ int main(void){
     dim3 gridSize((n + blockSize.x - 1) / blockSize.x, (n + blockSize.y - 1) / blockSize.y);
 
     // launch kernel on GPU
+    // TODO: time measurement
     game_iterations<<<gridSize , blockSize>>>(dev_mat, dev_streak, dev_counter, iter, n);
     
     // gather results
