@@ -3,47 +3,11 @@
 #include <cuda_runtime.h>
 
 #define INFILE "../input/input.txt"
+#define OUTMAT "../output/mat.txt"
+#define OUTCNT "../output/cnt.txt"
+#define OUTSTREAK "../output/streak.txt"
 // #define N 1000
 // #define ITER 500
-
-
-__global__ void game_iterations(int *dev_mat, int *dev_streak, int *dev_counter, int iterations, int dim){   
-    int x = blockIdx.x * blockDim.x + threadIdx.x;
-    int y = blockIdx.y * blockDim.y + threadIdx.y;
-
-    if(x > dim || y > dim)
-        return;
-
-    int idx = x * dim + y;
-
-    int sum;
-    int prev = 0;
-    int curr;
-
-    for(int i=0; i < iterations; i++){
-        curr = dev_mat[idx];
-        // statistics upgrade
-        if(curr && prev)
-            dev_streak[idx]++;
-        if(curr)
-            dev_counter[idx]++;
-        prev = curr;
-
-        __syncthreads();
-
-        // board update
-        sum = tot_neighbours(idx, dim, dev_mat);
-
-        if(!prev && sum == 3)
-            dev_mat[idx] = 1;
-        else if (prev && (sum >= 4 || sum == 1)){
-            dev_mat[idx] = 0;
-        }
-
-	    
-    }
-
-}
 
 // TODO: farla piu leggibile
 __device__ int tot_neighbours(int idx, int block_dim, int *dev_mat){
@@ -56,30 +20,72 @@ __device__ int tot_neighbours(int idx, int block_dim, int *dev_mat){
         left = 1; 
     else if((idx+1)%block_dim == 0)
         right = 1;
+
     if(idx-block_dim < 0)
         up = 1;
-    else if(idx+block_dim >= n*n)
+    else if(idx+block_dim >= block_dim*block_dim)
         down=1;
     // sum all existing nearby blocks vlaues
     if(!up){
         sum += dev_mat[idx-block_dim];
         if(!left)
             sum += dev_mat[idx-block_dim-1];
-        if(!up)
+        if(!right)
             sum += dev_mat[idx-block_dim+1];
     }
     if(!down){
         sum += dev_mat[idx+block_dim];
         if(!left)
             sum += dev_mat[idx+block_dim-1];
-        if(!up)
+        if(!right)
             sum += dev_mat[idx+block_dim+1];
     }
     if(!left)
         sum += dev_mat[idx-1];
-    if(!up)
+    if(!right)
         sum += dev_mat[idx+1];
     return sum;
+}
+
+
+
+__global__ void game_iterations(int *dev_mat, int *dev_streak, int *dev_counter, int iterations, int dim){   
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if(x > dim || y > dim)
+        return;
+
+    int idx = x * dim + y;
+
+    int sum;
+    int curr=dev_mat[idx];
+    int counter=curr;
+    int streak=0;
+
+    for(int i=0; i < iterations; i++){
+        // board update
+        sum = tot_neighbours(idx, dim, dev_mat);
+
+        if(!curr && sum == 3){
+            curr = 1;
+            counter++;
+        }
+        else if (curr && (sum >= 4 || sum <= 1)){
+            curr = 0;
+        }
+        else if(curr){
+            counter++;
+            streak++;
+        } 
+        __syncthreads();
+        dev_mat[idx] = curr;
+        __syncthreads();
+    }
+
+    dev_counter[idx] = counter;
+    dev_streak[idx] = streak;
+
 }
 
 
@@ -96,6 +102,7 @@ int main(void){
 
     int *mat;
     FILE *fin = fopen(INFILE, "r");
+    FILE *fout = fopen("../output/original.txt", "w");
     int *counter;
     int *streak;
 
@@ -104,15 +111,23 @@ int main(void){
     counter = (int *)malloc(n*n*sizeof(int));
     streak = (int *)malloc(n*n*sizeof(int));
     
+    char c;
     for(int i=0; i < n; i++){
         for (int j=0; j < n; j++){
             // reading of the input file and initialization of the matrix
-            if(fgetc(fin) == 'X')
+            c = fgetc(fin);
+            while(c!='O' && c !='X')
+                c = fgetc(fin);
+            if(c == 'X')
                 mat[n * i + j] = 1;
             else
                 mat[n * i + j] = 0;
+            fprintf(fout, "%d ", mat[n*i+j]);
         }
+        fprintf(fout, "\n");
     }
+
+    fclose(fout);
 
     // statistics array initialization into dev mem
     int *dev_counter;
@@ -127,12 +142,13 @@ int main(void){
     // copy input to device mem
     int *dev_mat;
 
-    cudaMalloc((void**)&dev_mat, n * n sizeof(int))
+    cudaMalloc((void**)&dev_mat, n * n * sizeof(int));
     cudaMemcpy(dev_mat, mat, n * n * sizeof(int), cudaMemcpyHostToDevice);
 
     // TODO: device block distribution
-    dim3 blockSize(n, n);
-    dim3 gridSize((n + blockSize.x - 1) / blockSize.x, (n + blockSize.y - 1) / blockSize.y);
+    int m = 32;
+    dim3 blockSize(m, m, 1);
+    dim3 gridSize((n + blockSize.x - 1) / blockSize.x, (n + blockSize.y - 1) / blockSize.y, 1);
 
     // launch kernel on GPU
     // TODO: time measurement
@@ -160,28 +176,37 @@ int main(void){
 }
 
 
-void printer(int *mat, int *streak, int *counter, int N){
-    printf("Final state of the board:\n");
+void printer(int *mat, int *counter, int *streak, int N){
+    FILE *f_mat, *f_cnt, *f_streak;
+
+    f_mat = fopen(OUTMAT, "w");
+    printf("Printing final state of the board...\n");
     for(int i=0; i < N; i++){
         for(int j=0; j < N; j++){
-            printf("%d ", mat[i*N+j]);
+            fprintf(f_mat, "%d ", mat[i*N+j]);
         }
-        printf("\n");
-    }
-    
-    printf("Overall count of alive generation for single cell:\n");
-    for(int i=0; i < N; i++){
-        for(int j=0; j < N; j++){
-            printf("%d ", counter[i*N+j]);
-        }
-        printf("\n");
+        fprintf(f_mat, "\n");
     }
 
-    printf("Maximum consecutive alive generations:\n");
+    f_cnt = fopen(OUTCNT, "w");
+    printf("Printing overall count of alive generation for single cell...\n");
     for(int i=0; i < N; i++){
         for(int j=0; j < N; j++){
-            printf("%d ", streak[i*N+j]);
+            fprintf(f_cnt, "%d ", counter[i*N+j]);
         }
-        printf("\n");
+        fprintf(f_cnt, "\n");
     }
+
+    f_streak = fopen(OUTSTREAK, "w");
+    printf("Printing maximum consecutive alive generations...\n");
+    for(int i=0; i < N; i++){
+        for(int j=0; j < N; j++){
+            fprintf(f_streak, "%d ", streak[i*N+j]);
+        }
+        fprintf(f_streak, "\n");
+    }
+
+    fclose(f_mat);
+    fclose(f_cnt);
+    fclose(f_streak);
 }

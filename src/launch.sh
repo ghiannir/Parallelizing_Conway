@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=conway
 #SBATCH --partition=cudatemp
-#SBATCH --time=00:01:00
+#SBATCH --time=00:00:20
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --output=conway.txt
@@ -15,6 +15,9 @@ fi
 
 export N="$1"
 export ITER="$2"
+
+module load intel/python/3/2017.3.052
+python generator.py
 
 module load nvidia/cudasdk/10.1
 

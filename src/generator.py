@@ -1,8 +1,9 @@
 from random import randint
+from os import environ
 
-N = 1000
+N = int(environ.get('N'))
 
-fp = open("input.txt", "w")
+fp = open("../input/input.txt", "w")
 
 for i in range(N):
     for j in range(N):
@@ -12,3 +13,4 @@ for i in range(N):
         else:
             fp.write("X")
     fp.write("\n")
+fp.close()
