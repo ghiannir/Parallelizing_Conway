@@ -11,10 +11,10 @@ __global__ void game_iterations(int *dev_mat, int *dev_streak, int *dev_counter,
     int x = blockIdx.x * blockDim.x + threadIdx.x;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
 
-    if(x > N || y > N)
+    if(x > dim || y > dim)
         return;
 
-    int idx = x * N + y;
+    int idx = x * dim + y;
 
     int sum;
     int prev = 0;

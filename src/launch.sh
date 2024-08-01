@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=conway
 #SBATCH --partition=cudatemp
-#SBATCH --time=00:00:05
+#SBATCH --time=00:01:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --output=conway.txt
-#SBATCH --mem-per-cpu=10M
+#SBATCH --mem-per-cpu=1G
 #SBATCH --gres=gpu:1
 
 if [ "$#" -lt 2 ]; then
