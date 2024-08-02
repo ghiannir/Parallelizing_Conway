@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <cuda_runtime.h>
+#include <cooperative_groups.h>
 
 #define INFILE "../input/input.txt"
 #define OUTMAT "../output/mat.txt"
@@ -58,6 +59,9 @@ __global__ void game_iterations(int *dev_mat, int *dev_streak, int *dev_counter,
 
     int idx = x * dim + y;
 
+    // add cooperative grid
+    cooperative_groups::grid_group g = cooperative_groups::this_grid();
+
     int sum;
     int curr=dev_mat[idx];
     int counter=curr;
@@ -78,9 +82,11 @@ __global__ void game_iterations(int *dev_mat, int *dev_streak, int *dev_counter,
             counter++;
             streak++;
         } 
-        __syncthreads();
+        // __syncthreads();
+        g.sync();
         dev_mat[idx] = curr;
-        __syncthreads();
+        // __syncthreads();
+        g.sync();
     }
 
     dev_counter[idx] = counter;
