@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <cuda_runtime.h>
 #include <cooperative_groups.h>
+namespace cg = cooperative_groups;
 
 #define INFILE "../input/input.txt"
 #define OUTMAT "../output/mat.txt"
@@ -60,7 +61,7 @@ __global__ void game_iterations(int *dev_mat, int *dev_streak, int *dev_counter,
     int idx = x * dim + y;
 
     // add cooperative grid
-    cooperative_groups::grid_group g = cooperative_groups::this_grid();
+    // cg::grid_group g = cg::this_grid();
 
     int sum;
     int curr=dev_mat[idx];
@@ -82,11 +83,11 @@ __global__ void game_iterations(int *dev_mat, int *dev_streak, int *dev_counter,
             counter++;
             streak++;
         } 
-        // __syncthreads();
-        g.sync();
+        __syncthreads();
+        // g.sync();
         dev_mat[idx] = curr;
-        // __syncthreads();
-        g.sync();
+        __syncthreads();
+        // g.sync();
     }
 
     dev_counter[idx] = counter;
@@ -159,6 +160,9 @@ int main(void){
     // launch kernel on GPU
     // TODO: time measurement
     game_iterations<<<gridSize , blockSize>>>(dev_mat, dev_streak, dev_counter, iter, n);
+    // Launch the kernel using cudaLaunchCooperativeKernel
+    // void* kernelArgs[] = {(void*)dev_mat, (void*)dev_streak, (void*)dev_counter, (void*)&iter, (void*)&n};
+    // cudaLaunchCooperativeKernel((void*)game_iterations, gridDim, blockDim, kernelArgs);
     
     // gather results
 	cudaMemcpy(mat, dev_mat, n * n * sizeof(int),cudaMemcpyDeviceToHost);

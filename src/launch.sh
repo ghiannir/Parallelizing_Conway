@@ -21,7 +21,14 @@ python generator.py
 
 module load nvidia/cudasdk/10.1
 
-nvcc main.cu -o main
+nvcc main.cu -o main -lcudart
 ./main
+
+gcc sequential.c -o test
+./test
+
+echo "Showing diff between parallel and sequential:"
+
+diff ../output/mat.txt ../output/mat_seq.txt
 
 exit 0
