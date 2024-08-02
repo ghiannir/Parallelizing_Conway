@@ -16,6 +16,7 @@ void printer(int *mat, int *streak, int *counter, int N);
 
 
 int main(void){
+    printf("Running on CPU...\n\n");
     int n;
     char *num_elements = getenv("N");
     sscanf(num_elements, "%d", &n);
@@ -97,7 +98,7 @@ void printer(int *mat, int *counter, int *streak, int N){
     FILE *f_mat, *f_cnt, *f_streak;
 
     f_mat = fopen(OUTMAT, "w");
-    printf("Printing final state of the board...\n");
+    // printf("Printing final state of the board...\n");
     for(int i=0; i < N; i++){
         for(int j=0; j < N; j++){
             fprintf(f_mat, "%d ", mat[i*N+j]);
@@ -106,7 +107,7 @@ void printer(int *mat, int *counter, int *streak, int N){
     }
 
     f_cnt = fopen(OUTCNT, "w");
-    printf("Printing overall count of alive generation for single cell...\n");
+    // printf("Printing overall count of alive generation for single cell...\n");
     for(int i=0; i < N; i++){
         for(int j=0; j < N; j++){
             fprintf(f_cnt, "%d ", counter[i*N+j]);
@@ -115,7 +116,7 @@ void printer(int *mat, int *counter, int *streak, int N){
     }
 
     f_streak = fopen(OUTSTREAK, "w");
-    printf("Printing maximum consecutive alive generations...\n");
+    // printf("Printing maximum consecutive alive generations...\n");
     for(int i=0; i < N; i++){
         for(int j=0; j < N; j++){
             fprintf(f_streak, "%d ", streak[i*N+j]);

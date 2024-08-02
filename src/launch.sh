@@ -21,8 +21,9 @@ python generator.py
 
 module load nvidia/cudasdk/10.1
 
-nvcc main.cu -o main -lcudart
+nvcc main_v2.cu -o main
 ./main
+
 
 gcc sequential.c -o test
 ./test

@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <cuda_runtime.h>
 #include <cooperative_groups.h>
-namespace cg = cooperative_groups;
 
 #define INFILE "../input/input.txt"
 #define OUTMAT "../output/mat.txt"
@@ -51,49 +50,47 @@ __device__ int tot_neighbours(int idx, int block_dim, int *dev_mat){
 
 
 
-__global__ void game_iterations(int *dev_mat, int *dev_streak, int *dev_counter, int iterations, int dim){   
-    // int x = blockIdx.x * blockDim.x + threadIdx.x;
-    // int y = blockIdx.y * blockDim.y + threadIdx.y;
+__global__ void game_iterations(int *dev_mat, int *dev_streak, int *dev_counter, int *prev, int dim){   
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
 
-    // if(x > dim || y > dim)
-    //     return;
+    if(x > dim || y > dim)
+        return;
 
-    // int idx = x * dim + y;
-    int idx = blockIdx.x + blockDim.x + threadIdx.x;
+    int idx = x * dim + y;
 
     // add cooperative grid
-    cg::grid_group g = cg::this_grid();
+    // cooperative_groups::grid_group g = cooperative_groups::this_grid();
 
     int sum;
     int curr=dev_mat[idx];
-    int counter=curr;
-    int streak=0;
 
-    for(int i=0; i < iterations; i++){
-        // board update
-        sum = tot_neighbours(idx, dim, dev_mat);
+    sum = tot_neighbours(idx, dim, prev);
 
-        if(!curr && sum == 3){
-            curr = 1;
-            counter++;
-        }
-        else if (curr && (sum >= 4 || sum <= 1)){
-            curr = 0;
-        }
-        else if(curr){
-            counter++;
-            streak++;
-        } 
-        // __syncthreads();
-        g.sync();
-        dev_mat[idx] = curr;
-        // __syncthreads();
-        g.sync();
+    if(!curr && sum == 3){
+        curr = 1;
+        dev_counter[idx]++;
     }
+    else if (curr && (sum >= 4 || sum <= 1)){
+        curr = 0;
+    }
+    else if(curr){
+        dev_counter[idx]++;
+        dev_streak[idx]++;
+    }
+    dev_mat[idx] = curr;
+}
 
-    dev_counter[idx] = counter;
-    dev_streak[idx] = streak;
+__global__ void update(int *dev_mat, int *prev, int dim){
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
 
+    if(x > dim || y > dim)
+        return;
+
+    int idx = x * dim + y;
+
+    prev[idx] = dev_mat[idx];
 }
 
 
@@ -101,7 +98,6 @@ void printer(int *mat, int *streak, int *counter, int N);
 
 
 int main(void){
-    printf("Running on GPU...\n");
     int n;
     char *num_elements = getenv("N");
     sscanf(num_elements, "%d", &n);
@@ -141,12 +137,15 @@ int main(void){
     // statistics array initialization into dev mem
     int *dev_counter;
     int *dev_streak;
+    int *prev;
 
     cudaMalloc((void **)&dev_counter, n * n * sizeof(int));
     cudaMalloc((void **)&dev_streak, n * n * sizeof(int));
+    cudaMalloc((void **)&prev, n * n * sizeof(int));
 
     cudaMemset(dev_counter, 0x0, n * n * sizeof(int));
     cudaMemset(dev_streak, 0x0, n * n * sizeof(int));
+    cudaMemset(prev, 0x0, n * n * sizeof(int));
 
     // copy input to device mem
     int *dev_mat;
@@ -161,10 +160,11 @@ int main(void){
 
     // launch kernel on GPU
     // TODO: time measurement
-    game_iterations<<<gridSize , blockSize>>>(dev_mat, dev_streak, dev_counter, iter, n);
-    // Launch the kernel using cudaLaunchCooperativeKernel
-    void* kernelArgs[] = {(void*)&dev_mat, (void*)&dev_streak, (void*)&dev_counter, (void*)&iter, (void*)&n};
-    cudaLaunchCooperativeKernel((void*)game_iterations, (n + m - 1) / m * (n + m - 1) / m, m*m,kernelArgs);
+    for(int i=0; i < iter; i++){
+        update<<<gridSize, blockSize>>>(dev_mat, prev, n);
+
+        game_iterations<<<gridSize , blockSize>>>(dev_mat, dev_streak, dev_counter, prev, n);
+    }
     
     // gather results
 	cudaMemcpy(mat, dev_mat, n * n * sizeof(int),cudaMemcpyDeviceToHost);
@@ -192,7 +192,7 @@ void printer(int *mat, int *counter, int *streak, int N){
     FILE *f_mat, *f_cnt, *f_streak;
 
     f_mat = fopen(OUTMAT, "w");
-    // printf("Printing final state of the board...\n");
+    printf("Printing final state of the board...\n");
     for(int i=0; i < N; i++){
         for(int j=0; j < N; j++){
             fprintf(f_mat, "%d ", mat[i*N+j]);
@@ -201,7 +201,7 @@ void printer(int *mat, int *counter, int *streak, int N){
     }
 
     f_cnt = fopen(OUTCNT, "w");
-    // printf("Printing overall count of alive generation for single cell...\n");
+    printf("Printing overall count of alive generation for single cell...\n");
     for(int i=0; i < N; i++){
         for(int j=0; j < N; j++){
             fprintf(f_cnt, "%d ", counter[i*N+j]);
@@ -210,7 +210,7 @@ void printer(int *mat, int *counter, int *streak, int N){
     }
 
     f_streak = fopen(OUTSTREAK, "w");
-    // printf("Printing maximum consecutive alive generations...\n");
+    printf("Printing maximum consecutive alive generations...\n");
     for(int i=0; i < N; i++){
         for(int j=0; j < N; j++){
             fprintf(f_streak, "%d ", streak[i*N+j]);
