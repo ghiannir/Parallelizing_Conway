@@ -131,6 +131,12 @@ int main(void) {
     dim3 blockSize(m, m, 1);
     dim3 gridSize((n + blockSize.x - 1) / blockSize.x, (n + blockSize.y - 1) / blockSize.y, 1);
 
+    // Setting up timer
+    cudaEvent_t start, stop;
+    float elapsedTime;
+    cudaEventCreate(&start); // create event objects
+    cudaEventCreate(&stop);
+    cudaEventRecord(start, 0);
 
     // launch kernel on GPU
     // TODO: time measurement
@@ -140,6 +146,15 @@ int main(void) {
         game_iterations<<<gridSize , blockSize>>>(dev_mat, dev_streak, dev_counter, prev, n);
     }
 
+    // Reading timer
+    cudaEventRecord(stop, 0); // record end event
+    cudaEventSynchronize(stop); // wait for all device work to complete
+    cudaEventElapsedTime(&elapsedTime, start, stop); //time between events
+    cudaEventDestroy(start); //destroy start event
+    cudaEventDestroy(stop); 
+
+
+    printf("Total execution time %f ms\n", elapsedTime);
 
     // gather results
 	cudaMemcpy(mat, dev_mat, n * n * sizeof(int), cudaMemcpyDeviceToHost);
