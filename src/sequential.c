@@ -34,23 +34,22 @@ int main(void){
     streak = (int *)malloc(n*n*sizeof(int));
     int *prev = (int *)malloc(n*n*sizeof(int));
 
-    char c;
-    for(int i=0; i < n; i++){
-        for (int j=0; j < n; j++){
-            // reading of the input file and initialization of the matrix
-            c = fgetc(fin);
-            while(c!='O' && c !='X')
-                c = fgetc(fin);
-            if(c == 'X')
-                mat[n * i + j] = 1;
-            else
-                mat[n * i + j] = 0;
+
+    int value;
+    for (int i=0; i < n; i++) {
+        for (int j=0; j < n; j++) {
+            
+            if (fscanf(fin, "%d", &value) == 1) {
+                mat[n * i + j] = value;
+            } else {
+                printf("Error printing matrix at indexes (%d, %d)\n", i, j);
+            }
             prev[n*i+j] = mat[n*i+j];
             counter[n*i+j] = mat[n*i+j];
             streak[n*i+j] = 0;
         }
-
     }
+    fclose(fin);
 
     int sum, idx, curr;
 
@@ -87,8 +86,7 @@ int main(void){
     free(mat);
     free(counter);
     free(streak);
-
-    fclose(fin);
+    free(prev);
 
     return 0;
 }

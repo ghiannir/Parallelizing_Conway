@@ -9,8 +9,9 @@ for i in range(N):
     for j in range(N):
         x = randint(0, 1)
         if(x == 0):
-            fp.write("O")
+            fp.write("1")
         else:
-            fp.write("X")
+            fp.write("0")
+        fp.write(" ")
     fp.write("\n")
 fp.close()
