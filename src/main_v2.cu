@@ -8,6 +8,7 @@
 #define OUTMAT "../output/mat.txt"
 #define OUTCNT "../output/cnt.txt"
 #define OUTSTREAK "../output/streak.txt"
+#define STATS "../output/stats.csv"
 
 
 __device__ int tot_neighbours(int idx, int block_dim, int *dev_mat){
@@ -72,7 +73,32 @@ __global__ void update(int *dev_mat, int *prev, int dim) {
 void printer(int *mat, int *streak, int *counter, int N);
 
 
-int main(void) {
+
+int save_stats(int iterations, int table_size, float time, char * slurm_job_id) {
+    FILE *file;
+
+    file = fopen(STATS, "a");
+
+    if (file == NULL) {
+        printf("Error opening statistics file!\n");
+        return 1;
+    }
+
+    fprintf(file, "%s,%d,%d,%.3f\n", slurm_job_id, iterations, table_size, time);
+
+    fclose(file);
+    return 0;
+}
+
+
+
+int main(int argc, char * argv[]) {
+
+    if (argc != 2) {
+        printf("Number of arguments passed is %d, but should be 2\n", argc);
+        return 1;
+    }
+
     int n;
     char *num_elements = getenv("N");
     sscanf(num_elements, "%d", &n);
@@ -100,6 +126,7 @@ int main(void) {
                 mat[n * i + j] = value;
             } else {
                 printf("Error printing matrix at indexes (%d, %d)\n", i, j);
+                return 1;
             }
             
         }
@@ -171,6 +198,11 @@ int main(void) {
     free(mat);
     free(counter);
     free(streak);
+
+
+    if (save_stats(iter, n, elapsedTime, argv[1]) != 0) {
+        printf("Error saving stats\n");
+    }
 
     return 0;
 }
