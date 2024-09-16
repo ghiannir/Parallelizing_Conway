@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #define INFILE "../input/input.txt"
 #define OUTMAT "../output/mat_seq.txt"
 #define OUTCNT "../output/cnt_seq.txt"
 #define OUTSTREAK "../output/streak_seq.txt"
+#define STATS "../output/stats_sequential.csv"
 // #define N 1000
 // #define ITER 500
 
@@ -15,7 +17,30 @@ int tot_neighbours(int idx, int block_dim, int *dev_mat);
 void printer(int *mat, int *streak, int *counter, int N);
 
 
-int main(void){
+int save_stats(int iterations, int table_size, float time, char * slurm_job_id) {
+    FILE *file;
+
+    file = fopen(STATS, "a");
+
+    if (file == NULL) {
+        printf("Error opening statistics file!\n");
+        return 1;
+    }
+
+    fprintf(file, "%s,%d,%d,%.3f\n", slurm_job_id, iterations, table_size, time);
+
+    fclose(file);
+    return 0;
+}
+
+int main(int argc, char * argv[]){
+
+    if (argc != 2) {
+        printf("Number of arguments passed is %d, but should be 2\n", argc);
+        return 1;
+    }
+
+
     printf("Running on CPU...\n\n");
     int n;
     char *num_elements = getenv("N");
@@ -52,7 +77,8 @@ int main(void){
     fclose(fin);
 
     int sum, idx, curr;
-
+    clock_t begin = clock();
+    
     for(int i=0; i < iter; i++){
         memcpy(prev, mat, n*n*sizeof(int));        
         // board update
@@ -80,6 +106,10 @@ int main(void){
         }
     }
 
+    clock_t end = clock();
+    double time_spent = (double)(end - begin) * 1000 / CLOCKS_PER_SEC;
+
+
     // print or save results
     printer(mat, counter, streak, n);
 
@@ -87,6 +117,10 @@ int main(void){
     free(counter);
     free(streak);
     free(prev);
+
+    if (save_stats(iter, n, time_spent, argv[1]) != 0) {
+        printf("Error saving stats\n");
+    }
 
     return 0;
 }

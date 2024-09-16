@@ -36,14 +36,14 @@ module load nvidia/cudasdk/10.1
 nvcc main_v2.cu -o main
 
 echo "Running CUDA program"
-./main
+./main $SLURM_JOB_ID
 
 
 
 gcc sequential.c -o test
 
 echo "Running sequential program"
-./test
+./test $SLURM_JOB_ID
 
 echo "Showing diff between parallel and sequential:"
 
