@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=conway
 #SBATCH --partition=cudatemp
-#SBATCH --time=00:00:20
+#SBATCH --time=00:00:30
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem-per-cpu=1G
@@ -25,28 +25,26 @@ echo "Loading CUDA and compiling"
 module load nvidia/cudasdk/10.1
 
 
-
-# nvcc main_v3.cu -Wno-deprecated-gpu-targets -lcudadevrt -arch=sm_35 -rdc=true -o  main
-# ./main
-
 # Setting the env variable that specifies how many processors are available
 # export N_PROC=$(nproc --all)
 
 
 nvcc main_v2.cu -o main
-
 echo "Running CUDA program"
 ./main $SLURM_JOB_ID
 
 
+gcc -fopenmp main_v4.c -o main
+echo "Running OpenMP program"
+./main $SLURM_JOB_ID
+
 
 gcc sequential.c -o test
-
 echo "Running sequential program"
 ./test $SLURM_JOB_ID
 
-echo "Showing diff between parallel and sequential:"
+# echo "Showing diff between parallel and sequential:"
 
-diff ../output/mat.txt ../output/mat_seq.txt
+# diff ../output/mat.txt ../output/mat_seq.txt
 
 exit 0
