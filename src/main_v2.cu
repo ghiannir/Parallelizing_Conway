@@ -8,7 +8,7 @@
 #define OUTMAT "../output/mat.txt"
 #define OUTCNT "../output/cnt.txt"
 #define OUTSTREAK "../output/streak.txt"
-#define STATS "../output/stats.csv"
+#define STATS "../output/stats_cuda.csv"
 
 
 __device__ int tot_neighbours(int idx, int block_dim, int *dev_mat){
@@ -166,8 +166,8 @@ int main(int argc, char * argv[]) {
     cudaEventRecord(start, 0);
 
     // launch kernel on GPU
-    // TODO: time measurement
     for (int i=0; i < iter; i++) {
+        
         update<<<gridSize, blockSize>>>(dev_mat, prev, n);
 
         game_iterations<<<gridSize , blockSize>>>(dev_mat, dev_streak, dev_counter, prev, n);
