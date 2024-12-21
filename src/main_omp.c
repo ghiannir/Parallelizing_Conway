@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <omp.h>
 
-
 #define INFILE "../input/input.txt"
 #define OUTFILE "../output/original.txt"
 #define OUTMAT "../output/mat.txt"
@@ -49,88 +48,107 @@ int tot_neighbours(int idx, int size, int *table){
 }
 
 
-void printer(int *mat, int *counter, int *streak, int N){
-    FILE *f_mat, *f_cnt, *f_streak;
+// void printer(int *mat, int *counter, int *streak, int N){
+//     FILE *f_mat, *f_cnt, *f_streak;
 
-    f_mat = fopen(OUTMAT, "w");
-    printf("Printing final state of the board...\n");
-    for(int i=0; i < N; i++){
-        for(int j=0; j < N; j++){
-            fprintf(f_mat, "%d ", mat[i*N+j]);
-        }
-        fprintf(f_mat, "\n");
-    }
+//     f_mat = fopen(OUTMAT, "w");
+//     if (f_mat == NULL) {
+//         printf("Error opening file %s\n", OUTMAT);
+//         return;
+//     }
+//     printf("Printing final state of the board...\n");
+//     for(int i = 0; i < N; i++){
+//         for(int j = 0; j < N; j++){
+//             fprintf(f_mat, "%d ", mat[i*N+j]);
+//         }
+//         fprintf(f_mat, "\n");
+//     }
+//     fclose(f_mat);
+//     printf("Finished printing final state of the board.\n");
 
-    f_cnt = fopen(OUTCNT, "w");
-    printf("Printing overall count of alive generation for single cell...\n");
-    for(int i=0; i < N; i++){
-        for(int j=0; j < N; j++){
-            fprintf(f_cnt, "%d ", counter[i*N+j]);
-        }
-        fprintf(f_cnt, "\n");
-    }
+//     f_cnt = fopen(OUTCNT, "w");
+//     if (f_cnt == NULL) {
+//         printf("Error opening file %s\n", OUTCNT);
+//         return;
+//     }
+//     printf("Printing overall count of alive generation for single cell...\n");
+//     for(int i = 0; i < N; i++){
+//         for(int j = 0; j < N; j++){
+//             fprintf(f_cnt, "%d ", counter[i*N+j]);
+//         }
+//         fprintf(f_cnt, "\n");
+//     }
+//     fclose(f_cnt);
+//     printf("Finished printing overall count of alive generation for single cell.\n");
 
-    f_streak = fopen(OUTSTREAK, "w");
-    printf("Printing maximum consecutive alive generations...\n");
-    for(int i=0; i < N; i++){
-        for(int j=0; j < N; j++){
-            fprintf(f_streak, "%d ", streak[i*N+j]);
-        }
-        fprintf(f_streak, "\n");
-    }
-
-    fclose(f_mat);
-    fclose(f_cnt);
-    fclose(f_streak);
-}
+//     f_streak = fopen(OUTSTREAK, "w");
+//     if (f_streak == NULL) {
+//         printf("Error opening file %s\n", OUTSTREAK);
+//         return;
+//     }
+//     printf("Printing maximum consecutive alive generations...\n");
+//     for(int i = 0; i < N; i++){
+//         for(int j = 0; j < N; j++){
+//             fprintf(f_streak, "%d ", streak[i*N+j]);
+//         }
+//         fprintf(f_streak, "\n");
+//     }
+//     fclose(f_streak);
+//     printf("Finished printing maximum consecutive alive generations.\n");
+// }
 
 
 void buildMatrix(int n, int * matrix, FILE * input_file, FILE * output_file) {
-    for(int i=0; i < n; i++){
-        for (int j=0; j < n; j++){
+    for(int i = 0; i < n; i++){
+        for (int j = 0; j < n; j++){
             // reading of the input file and initialization of the matrix
             char c = fgetc(input_file);
-            while(c!='O' && c !='X')
+            while(c != 'O' && c != 'X')
                 c = fgetc(input_file);
             if(c == 'X')
                 matrix[n * i + j] = 1;
             else
                 matrix[n * i + j] = 0;
-            fprintf(output_file, "%d ", matrix[n*i+j]);
+            // fprintf(output_file, "%d ", matrix[n*i+j]);
         }
-        fprintf(output_file, "\n");
+        // fprintf(output_file, "\n");
     }
 }
 
 
-int main(void){
-    int n;
-    char *num_elements = getenv("N");
-    sscanf(num_elements, "%d", &n);
-    int iter;
-    char *num_iter = getenv("ITER");
-    sscanf(num_iter, "%d", &iter);
-
+int main(int argc, char *argv[]){
+    if (argc != 5) {
+        printf("Usage: %s <N> <ITER>\n", argv[0]);
+        return 1;
+    }
+    
+    int n = atoi(argv[1]);
+    int iter = atoi(argv[2]);
+    int n_threads = atoi(argv[3]);
 
     int *counter;
     int *streak;
-    char c;
     int *mat;
     int *prev;
+
     mat = (int *)malloc(n*n*sizeof(int));
     prev = (int *)malloc(n*n*sizeof(int));
     counter = (int *)malloc(n*n*sizeof(int));
     streak = (int *)malloc(n*n*sizeof(int));
 
+    if (mat == NULL || prev == NULL || counter == NULL || streak == NULL) {
+        printf("Memory allocation failed.\n");
+        return 1;
+    }
+
+    // printf("Building matrix...\n");
     buildMatrix(n , mat, fopen(INFILE, "r"), fopen(OUTFILE, "w"));
 
-    printf("Max number of threads: %d\n", omp_get_max_threads());
+    // printf("Max number of threads: %d\n", omp_get_max_threads());
 
-    int n_threads = 24;
     omp_set_num_threads(n_threads);
 
-
-
+    double start_time = omp_get_wtime();
     for (int i = 0; i < iter; i++) {
         #pragma omp parallel for schedule(static)
         for (int j = 0; j < n * n; j++) {
@@ -140,7 +158,7 @@ int main(void){
         #pragma omp parallel for schedule(static)
         for (int j = 0; j < n * n; j++) {
             int sum;
-            int curr=mat[j];
+            int curr = mat[j];
 
             sum = tot_neighbours(j, n, prev);
 
@@ -158,15 +176,16 @@ int main(void){
             mat[j] = curr;
         }
     }
+    double end_time = omp_get_wtime();
 
-    printer(mat, counter, streak, n);
+    FILE *pcsv = fopen(argv[4], "a");
+    fprintf(pcsv, "%d, %d, %d, %f", n, iter, n_threads, end_time-start_time);
 
     free(mat);
     free(counter);
     free(streak);
     free(prev);
 
+
     return 0;
 }
-
-

@@ -8,7 +8,7 @@
 #define OUTMAT "../output/mat.txt"
 #define OUTCNT "../output/cnt.txt"
 #define OUTSTREAK "../output/streak.txt"
-#define STATS "../output/stats.csv"
+// #define STATS "../output/stats.csv"
 
 
 __device__ int tot_neighbours(int idx, int block_dim, int *dev_mat){
@@ -71,20 +71,21 @@ __global__ void update(int *dev_mat, int *prev, int dim) {
 
 
 void printer(int *mat, int *streak, int *counter, int N);
+float dist_counter(int *mat, int n);
 
 
 
-int save_stats(int iterations, int table_size, float time, char * slurm_job_id) {
+int save_stats(float count, float time, char * slurm_job_id, char *filename) {
     FILE *file;
 
-    file = fopen(STATS, "a");
+    file = fopen(filename, "a");
 
     if (file == NULL) {
         printf("Error opening statistics file!\n");
         return 1;
     }
 
-    fprintf(file, "%s,%d,%d,%.3f\n", slurm_job_id, iterations, table_size, time);
+    fprintf(file, "%s,%.4f,%.3f\n", slurm_job_id, count, time);
 
     fclose(file);
     return 0;
@@ -105,6 +106,7 @@ int main(int argc, char * argv[]) {
     int iter;
     char *num_iter = getenv("ITER");
     sscanf(num_iter, "%d", &iter);
+    char *distribution = getenv("DIST");
 
     int *mat;
     FILE *fin = fopen(INFILE, "r");
@@ -193,14 +195,15 @@ int main(int argc, char * argv[]) {
     cudaFree(dev_streak);
 
     // print or save results
-    printer(mat, counter, streak, n);
+    // printer(mat, counter, streak, n);
+    float count = dist_counter(mat, n);
 
     free(mat);
     free(counter);
     free(streak);
 
 
-    if (save_stats(iter, n, elapsedTime, argv[1]) != 0) {
+    if (save_stats(count, elapsedTime, argv[1], distribution) != 0) {
         printf("Error saving stats\n");
     }
 
@@ -241,4 +244,13 @@ void printer(int *mat, int *counter, int *streak, int N){
     fclose(f_mat);
     fclose(f_cnt);
     fclose(f_streak);
+}
+
+
+float dist_counter(int *mat, int n){
+    int c = 0;
+    for(int i=0; i < n*n; i++){
+        c += mat[i];
+    }
+    return float(c)/(n*n);
 }
