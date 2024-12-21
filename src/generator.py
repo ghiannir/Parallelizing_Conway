@@ -1,7 +1,13 @@
 import random
+import sys
 from os import environ
-N = int(environ.get('N'))
-DIS = float(environ.get('DIS'))
+
+try:
+    N = int(environ.get('N'))
+    DIS = float(environ.get('DIS'))
+except:
+    N = int(sys.argv[1])
+    DIS = 0.5
 
 fp = open("../input/input.txt", "w")
 

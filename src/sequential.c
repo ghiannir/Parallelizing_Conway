@@ -35,19 +35,13 @@ int save_stats(int iterations, int table_size, float time, char * slurm_job_id) 
 
 int main(int argc, char * argv[]){
 
-    if (argc != 2) {
+    if (argc != 3) {
         printf("Number of arguments passed is %d, but should be 2\n", argc);
         return 1;
     }
 
-
-    printf("Running on CPU...\n\n");
-    int n;
-    char *num_elements = getenv("N");
-    sscanf(num_elements, "%d", &n);
-    int iter;
-    char *num_iter = getenv("ITER");
-    sscanf(num_iter, "%d", &iter);
+    int n = atoi(argv[1]);
+    int iter = atoi(argv[2]);
 
     int *mat;
     FILE *fin = fopen(INFILE, "r");
@@ -118,9 +112,9 @@ int main(int argc, char * argv[]){
     free(streak);
     free(prev);
 
-    if (save_stats(iter, n, time_spent, argv[1]) != 0) {
-        printf("Error saving stats\n");
-    }
+    // if (save_stats(iter, n, time_spent, argv[1]) != 0) {
+    //     printf("Error saving stats\n");
+    // }
 
     return 0;
 }

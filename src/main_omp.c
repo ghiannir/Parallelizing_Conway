@@ -98,14 +98,14 @@ int tot_neighbours(int idx, int size, int *table){
 // }
 
 
-void buildMatrix(int n, int * matrix, FILE * input_file, FILE * output_file) {
+void buildMatrix(int n, int * matrix, FILE * input_file) {
     for(int i = 0; i < n; i++){
         for (int j = 0; j < n; j++){
             // reading of the input file and initialization of the matrix
             char c = fgetc(input_file);
-            while(c != 'O' && c != 'X')
+            while(c != '0' && c != '1')
                 c = fgetc(input_file);
-            if(c == 'X')
+            if(c == '1')
                 matrix[n * i + j] = 1;
             else
                 matrix[n * i + j] = 0;
@@ -117,14 +117,18 @@ void buildMatrix(int n, int * matrix, FILE * input_file, FILE * output_file) {
 
 
 int main(int argc, char *argv[]){
+    // printf("Entering main function...\n");
+
     if (argc != 5) {
-        printf("Usage: %s <N> <ITER>\n", argv[0]);
+        printf("Usage: %s <N> <ITER> <n_threads> <output_file>\n", argv[0]);
         return 1;
     }
     
     int n = atoi(argv[1]);
     int iter = atoi(argv[2]);
     int n_threads = atoi(argv[3]);
+
+    // printf("Arguments received: N=%d, ITER=%d, n_threads=%d\n", n, iter, n_threads);
 
     int *counter;
     int *streak;
@@ -142,7 +146,7 @@ int main(int argc, char *argv[]){
     }
 
     // printf("Building matrix...\n");
-    buildMatrix(n , mat, fopen(INFILE, "r"), fopen(OUTFILE, "w"));
+    buildMatrix(n , mat, fopen(INFILE, "r"));
 
     // printf("Max number of threads: %d\n", omp_get_max_threads());
 
@@ -179,7 +183,7 @@ int main(int argc, char *argv[]){
     double end_time = omp_get_wtime();
 
     FILE *pcsv = fopen(argv[4], "a");
-    fprintf(pcsv, "%d, %d, %d, %f", n, iter, n_threads, end_time-start_time);
+    fprintf(pcsv, "\n%d, %d, %d, %f", n, iter, n_threads, end_time-start_time);
 
     free(mat);
     free(counter);
