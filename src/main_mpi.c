@@ -8,7 +8,7 @@
 #define OUTMAT "../output/mat_mpi.txt"
 #define OUTCNT "../output/cnt_mpi.txt"
 #define OUTSTREAK "../output/streak_mpi.txt"
-#define DEBUG
+// #define DEBUG
 
 // TODO: farla piu leggibile, si possono togliere gli if inserendo solo somme (i campi nelle celle sono 0 o 1)
 int tot_neighbours(int i, int size, int *table){
@@ -143,8 +143,8 @@ int main(int argc, char *argv[]){
     MPI_Comm_size(MPI_COMM_WORLD, &numtasks);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 #ifndef DEBUG
-    if (argc != 4) {
-        printf("Usage: %s <N> <ITER> <output_file>\n", argv[0]);
+    if (argc != 3) {
+        printf("Usage: %s <N> <ITER> >> <output_file>\n", argv[0]);
         MPI_Finalize();
         return 1;
     }
@@ -204,11 +204,6 @@ int main(int argc, char *argv[]){
         }
 
         buildMatrix(n , mat, fopen(INFILE, "r"));
-        // printf("Here matrix has dimensions %d, with n=%d\n", sizeof(mat), n);
-
-        // memcpy(counter, mat, n*n*sizeof(int));
-        // memset(streak, 0, n*n*sizeof(int));
-
         // initialize local matrices
         memcpy(local_mat, mat, (rows_per_process) * n * sizeof(int));
         memcpy(local_counter, mat, (rows_per_process) * n * sizeof(int));
@@ -261,27 +256,6 @@ int main(int argc, char *argv[]){
             MPI_Recv(&local_prev[(rows_per_process+1) * n], n, MPI_INT, rank+1, 0, MPI_COMM_WORLD, &Stat);
             
         }
-        printf("Rank %d local_prev matrix\n", rank, rows_per_process);
-        char fn[20];
-        sprintf(fn, "out_mat%d.txt", rank);
-        FILE *fout = fopen(fn, "w");
-        for (int i = 0; i < rows_per_process+2; i++) {
-            for (int j = 0; j < n; j++) {
-                fprintf(fout, "%d ", local_prev[i*n+j]);
-            }
-            fprintf(fout, "\n");
-        }
-        fclose(fout);
-        // printf("\nRank %d received initial row:", rank);
-        // for (int i = 0; i < n; i++) {
-        //     printf("%d ", local_prev[i]);
-        // }
-        // printf("\n");
-        // printf("\nRank %d received final row:", rank);
-        // for (int i = 0; i < n; i++) {
-        //     printf("%d ", local_prev[i+(rows_per_process+1)*n]);
-        // }
-        // printf("\n");
 
         // update local matrix
         game_of_life(n, local_prev, local_mat, local_counter, local_streak, rows_per_process);
@@ -289,7 +263,7 @@ int main(int argc, char *argv[]){
         MPI_Barrier(MPI_COMM_WORLD);
     }
     double end_time = MPI_Wtime();
-#ifndef DEBUG
+#ifdef NO_GATHER
     int *p = malloc(sizeof(int));
     *p = 1;
     if (rank==0){
@@ -303,7 +277,7 @@ int main(int argc, char *argv[]){
             MPI_Send(p, 1, MPI_INT, rank+1, 0, MPI_COMM_WORLD);
     }
     free(p);
-#endif
+#else
     
     int offset = 0;
     int total_size = 0;
@@ -322,117 +296,12 @@ int main(int argc, char *argv[]){
         total_size += recvcounts[i];
     }
 
-    // Alloca i buffer di ricezione con la dimensione corretta
-    // if (rank == 0) {
-    //     mat = (int*)malloc(total_size * sizeof(int));
-    //     counter = (int*)malloc(total_size * sizeof(int));
-    //     streak = (int*)malloc(total_size * sizeof(int));
-    //     memset(counter, 0, n * n * sizeof(int));
-    //     memset(streak, 0, n * n * sizeof(int));
-    //     memset(mat, 0, n * n * sizeof(int));
-    // }
-
-    //Utilizza MPI_Gatherv per raccogliere i dati
-    // if (rank==0){
-    //     mat = (int *)malloc(n*n*sizeof(int));
-    //     counter = (int *)malloc(n*n*sizeof(int)); 
-    //     streak = (int *)malloc(n*n*sizeof(int));
-        
-    //     for(int i=0; i<n; i++){
-    //         for(int j=0; j < n; j++){
-    //             printf("%d ", mat[i*n+j]);
-    //         }
-    //         printf("\n");
-    //     }
-    // }
-    printf("Rank %d is gathering with %d rows\n", rank, rows_per_process);
-    // MPI_Barrier(MPI_COMM_WORLD);
+    
+    // printf("Rank %d is gathering with %d rows\n", rank, rows_per_process);
     MPI_Gatherv(&local_mat[0], rows_per_process * n, MPI_INT, &mat[0], recvcounts, displs, MPI_INT, 0, MPI_COMM_WORLD);
-    // MPI_Barrier(MPI_COMM_WORLD);
     MPI_Gatherv(&local_counter[0], rows_per_process * n, MPI_INT, &counter[0], recvcounts, displs, MPI_INT, 0, MPI_COMM_WORLD);
-    // MPI_Barrier(MPI_COMM_WORLD);
     MPI_Gatherv(&local_streak[0], rows_per_process * n, MPI_INT, &streak[0], recvcounts, displs, MPI_INT, 0, MPI_COMM_WORLD);
-    // MPI_Gather(&local_mat[0], rows_per_process * n, MPI_INT, &mat[0], rows_per_process * n, MPI_INT, 0, MPI_COMM_WORLD);
-    // MPI_Gather(&local_counter[0], rows_per_process * n, MPI_INT, &counter[0], rows_per_process * n, MPI_INT, 0, MPI_COMM_WORLD);
-    // MPI_Gather(&local_streak[0], rows_per_process * n, MPI_INT, &streak[0], rows_per_process * n, MPI_INT, 0, MPI_COMM_WORLD);
-    // int *p = malloc(sizeof(int));
-    // *p = 1;
-    // MPI_Request request1, request2, request3;
-    // MPI_Barrier(MPI_COMM_WORLD);
-    // if (rank==0){
-    //     MPI_Igather(&local_mat[0], rows_per_process * n, MPI_INT, &mat[0], rows_per_process * n, MPI_INT, 0, MPI_COMM_WORLD, &request1);
-    //     MPI_Igather(&local_counter[0], rows_per_process * n, MPI_INT, &counter[0], rows_per_process * n, MPI_INT, 0, MPI_COMM_WORLD, &request2);
-    //     MPI_Igather(&local_streak[0], rows_per_process * n, MPI_INT, &streak[0], rows_per_process * n, MPI_INT, 0, MPI_COMM_WORLD, &request3);
-    //     MPI_Send(p, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
-    //     MPI_Wait(&request1, MPI_STATUS_IGNORE);
-    //     MPI_Wait(&request2, MPI_STATUS_IGNORE);
-    //     MPI_Wait(&request3, MPI_STATUS_IGNORE);
-    // }
-    // else{
-    //     MPI_Recv(p, 1, MPI_INT, rank-1, 0, MPI_COMM_WORLD, &Stat);
-    //     MPI_Igather(&local_mat[0], rows_per_process * n, MPI_INT, &mat[0], rows_per_process * n, MPI_INT, 0, MPI_COMM_WORLD, &request1);
-    //     MPI_Igather(&local_counter[0], rows_per_process * n, MPI_INT, &counter[0], rows_per_process * n, MPI_INT, 0, MPI_COMM_WORLD, &request2);
-    //     MPI_Igather(&local_streak[0], rows_per_process * n, MPI_INT, &streak[0], rows_per_process * n, MPI_INT, 0, MPI_COMM_WORLD, &request3);
-    //     if(rank!=numtasks-1)
-    //         MPI_Send(p, 1, MPI_INT, rank+1, 0, MPI_COMM_WORLD);
-    // }
-    // MPI_Barrier(MPI_COMM_WORLD);
-    // free(p);
-
-    // // Libera la memoria allocata
-    // free(recvcounts);
-    // free(displs);
-
-    // gather local matrices
-    // if(rank==0){
-    //     memcpy(&mat[0], local_mat, (rows_per_process) * n * sizeof(int));
-    //     memcpy(&counter[0], local_counter, (rows_per_process) * n * sizeof(int));
-    //     memcpy(&streak[0], local_streak, (rows_per_process) * n * sizeof(int));
-    //     // printer(mat, counter, streak, n);
-    //     printf("Here matrix has dimensions %d", sizeof(mat));
-    //     int m_offset = (rows_per_process) * n;
-    //     int c_offset = (rows_per_process) * n;
-    //     int s_offset = (rows_per_process) * n;
-    //     printf("0 is gathering...\n");
-    //     for (int r = 1; r < numtasks; r++) {
-    //         int rows = (r < extra_rows) ? rows_per_process : rows_per_process - 1;
-    //         printf("%d is sending...\n", r);
-            
-    //         // Ricevi m
-    //         printf("Receiving m from %d...space %ld\n", r, sizeof(mat));
-    //         MPI_Recv(&mat[m_offset], rows * n, MPI_INT, r, 0, MPI_COMM_WORLD, &Stat);
-    //         int count;
-    //         MPI_Get_count(&Stat, MPI_INT, &count);
-    //         if (count != rows * n) {
-    //             printf("Error: received message size %d does not match expected size %d for m\n", count, rows * n);
-    //         } else {
-    //             printf("Received m from %d successfully.\n", r);
-    //         }
-    //         m_offset += rows * n;
-
-    //         // Ricevi c
-    //         printf("Receiving c from %d...space %ld\n", r, sizeof(counter));
-    //         MPI_Recv(&counter[c_offset], rows * n, MPI_INT, r, 0, MPI_COMM_WORLD, &Stat);
-    //         MPI_Get_count(&Stat, MPI_INT, &count);
-    //         if (count != rows * n) {
-    //             printf("Error: received message size %d does not match expected size %d for c\n", count, rows * n);
-    //         } else {
-    //             printf("Received c from %d successfully.\n", r);
-    //         }
-    //         c_offset += rows * n;
-
-    //         // Ricevi s
-    //         printf("Receiving s from %d...space %ld\n", r, sizeof(streak));
-    //         MPI_Recv(&streak[s_offset], rows * n, MPI_INT, r, 0, MPI_COMM_WORLD, &Stat);
-    //         MPI_Get_count(&Stat, MPI_INT, &count);
-    //         if (count != rows * n) {
-    //             printf("Error: received message size %d does not match expected size %d for s\n", count, rows * n);
-    //         } else {
-    //             printf("Received s from %d successfully.\n", r);
-    //         }
-    //         s_offset += rows * n;
-    //     }
-    // }
+#endif
     if (rank==0){
 #ifdef DEBUG
         printer(mat, counter, streak, n, n);
@@ -441,32 +310,27 @@ int main(int argc, char *argv[]){
         free(counter);
         free(streak);
     }
-    // else {
-    //     printf("Sending data from %d...\n", rank);
-    //     MPI_Send(&local_mat[0], rows_per_process * n, MPI_INT, 0, 0, MPI_COMM_WORLD);
-    //     printf("Sent local_mat from %d.\n", rank);
-    //     MPI_Send(&local_counter[0], rows_per_process * n, MPI_INT, 0, 0, MPI_COMM_WORLD);
-    //     printf("Sent local_counter from %d.\n", rank);
-    //     MPI_Send(&local_streak[0], rows_per_process * n, MPI_INT, 0, 0, MPI_COMM_WORLD);
-    //     printf("Sent local_streak from %d.\n", rank);
-    // }
+
     MPI_Barrier(MPI_COMM_WORLD); 
     free(local_mat);
     free(local_counter);
     free(local_streak);
     free(local_prev);
-    
+    free(recvcounts);
+    free(displs);
 
     if (rank==0){
-        printf("Elapsed time %f", end_time-start_time);
+        // printf("Elapsed time %f", end_time-start_time);
+#ifndef DEBUG
+        // FILE *pcsv = fopen(argv[4], "a");
+        // fprintf(pcsv, "\n%d, %d, %d, %f", n, iter, numtasks, end_time-start_time);
+        // fclose(pcsv);
+        printf("\n%d, %d, %d, %f", n, iter, numtasks, end_time-start_time);
+#endif        
     }
 
     MPI_Finalize();
-#ifndef DEBUG
-    FILE *pcsv = fopen(argv[4], "a");
-    fprintf(pcsv, "\n%d, %d, %d, %f", n, iter, n_threads, end_time-start_time);
-    fclose(pcsv);
-#endif
+
 
     return 0;
 }

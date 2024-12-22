@@ -9,8 +9,6 @@
 
 # Load necessary modules
 # module load mpi
-export OMPI_MCA_btl_tcp_sndbuf=8388608  # 8 MB
-export OMPI_MCA_btl_tcp_rcvbuf=8388608  # 8 MB
 rm ../output/*_mpi.txt
 
 # Compile the MPI program
@@ -21,13 +19,13 @@ mpicc -O3 -o main_mpi ../src/main_mpi.c
 gcc -o sequential ../src/sequential.c
 
 module load intel/python/3/2017.3.052
-N=100
+N=1000
 python3 ../src/generator.py "$N"
 # Run the MPI program
-mpirun -np 4 ./main_mpi "$N" 1
+mpirun -np 4 ./main_mpi "$N" 50 ../output/results.csv
 
 # Run the sequential program
-./sequential "$N" 1
+./sequential "$N" 50
 
 # Compare the outputs
 diff ../output/mat_mpi.txt ../output/mat_seq.txt > ../output/diff_output.txt

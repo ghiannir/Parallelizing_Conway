@@ -5,6 +5,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=12
 #SBATCH --output=omp.txt
+#SBATCH --error=omp_err.txt
 
 # if [ "$#" -lt 3 ]; then
 #     echo "Too few arguments, given $#, usage: sbatch launch.sh 'dimensions' 'iterations' 'distribution'"
