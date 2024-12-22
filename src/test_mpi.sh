@@ -22,7 +22,7 @@ module load intel/python/3/2017.3.052
 N=1000
 python3 ../src/generator.py "$N"
 # Run the MPI program
-mpirun -np 4 ./main_mpi "$N" 50 ../output/results.csv
+mpirun -np 4 ./main_mpi "$N" 50
 
 # Run the sequential program
 ./sequential "$N" 50

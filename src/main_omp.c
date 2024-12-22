@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <omp.h>
 
-#define INFILE "../input/input.txt"
+#define INFILE "../input/input_omp.txt"
 #define OUTFILE "../output/original.txt"
 #define OUTMAT "../output/mat.txt"
 #define OUTCNT "../output/cnt.txt"

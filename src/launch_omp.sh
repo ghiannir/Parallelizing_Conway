@@ -22,9 +22,9 @@ module load intel/python/3/2017.3.052
 
 for t in {1,2,4,8,10,12}; do
     for i in {50,100,500,1000,2000,5000}; do
-        for s in {500,1000,2000,5000,8000,10000}; do
+        for s in {500,1000,2000,3000}; do
             for j in {1..20}; do
-                python generator.py "$s"
+                python generator.py "$s" omp
                 ./main_omp "$s" "$i" "$t" ../output/open_mp/results.csv
             done
         done

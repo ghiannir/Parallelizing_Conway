@@ -9,7 +9,9 @@ except:
     N = int(sys.argv[1])
     DIS = 0.5
 
-fp = open("../input/input.txt", "w")
+filename = "../input/input_"+sys.argv[2]+".txt"
+
+fp = open(filename, 'w')
 
 for i in range(N):
     sequence = [0 if random.random() < DIS else 1 for _ in range(N)]

@@ -2,8 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include "mpi.h"
+#include <omp.h>
 
-#define INFILE "../input/input_mpi.txt"
+#define INFILE "../input/input_hyb.txt"
 #define OUTFILE "../output/original.txt"
 #define OUTMAT "../output/mat_mpi.txt"
 #define OUTCNT "../output/cnt_mpi.txt"
@@ -108,7 +109,7 @@ void buildMatrix(int n, int * matrix, FILE * input_file) {
 void game_of_life(int n, int *prev, int *mat, int *counter, int *streak, int rows_per_process){
 
     int idx, sum, curr;
-    
+    #pragma omp parallel for schedule(static) private(idx, sum, curr)
     for(int j=0; j < rows_per_process; j++){
             for(int z=0; z < n; z++){
                 idx = j*n+z;
@@ -143,14 +144,14 @@ int main(int argc, char *argv[]){
     MPI_Comm_size(MPI_COMM_WORLD, &numtasks);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 #ifndef DEBUG
-    if (argc != 3) {
-        printf("Usage: %s <N> <ITER> >> <output_file>\n", argv[0]);
+    if (argc != 4) {
+        printf("Usage: %s <N> <ITER> <omp_threads> >> <output_file>\n", argv[0]);
         MPI_Finalize();
         return 1;
     }
 #else
-    if (argc != 3) {
-        printf("Usage: %s <N> <ITER>\n", argv[0]);
+    if (argc != 4) {
+        printf("Usage: %s <N> <ITER> <omp_threads>\n", argv[0]);
         MPI_Finalize();
         return 1;
     }
@@ -158,6 +159,8 @@ int main(int argc, char *argv[]){
     
     int n = atoi(argv[1]);
     int iter = atoi(argv[2]);
+    int n_threads = atoi(argv[3]);
+    omp_set_num_threads(n_threads);
 
     int rows_per_process = n / numtasks;
     int extra_rows = n % numtasks;
@@ -325,7 +328,7 @@ int main(int argc, char *argv[]){
         // FILE *pcsv = fopen(argv[4], "a");
         // fprintf(pcsv, "\n%d, %d, %d, %f", n, iter, numtasks, end_time-start_time);
         // fclose(pcsv);
-        printf("\n%d, %d, %d, %f", n, iter, numtasks, end_time-start_time);
+        printf("\n%d, %d, %d, %d, %f", n, iter, numtasks, n_threads, end_time-start_time);
 #endif        
     }
 
