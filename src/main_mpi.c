@@ -234,29 +234,44 @@ int main(int argc, char *argv[]){
     MPI_Barrier(MPI_COMM_WORLD);
     // start iterations
     double start_time = MPI_Wtime();
-    for(int i=0; i<iter; i++){
+    MPI_Request send_request[2], recv_request[2];
+    MPI_Status send_status[2], recv_status[2];
+    for(int t=0; t<iter; t++){
         // update local matrix
         memcpy(local_prev+n, local_mat, (rows_per_process) * n * sizeof(int));
+        // printf("Rank %d updated previous matrix, iteration %d...\n", rank, i);
         //  exchange ghost cells
-        if(rank==numtasks-1){
-            MPI_Send(&local_mat[0], n, MPI_INT, rank-1, 0, MPI_COMM_WORLD);
-            // printf("Process %d receiving...", rank);
-            MPI_Recv(&local_prev[0], n, MPI_INT, rank-1, 0, MPI_COMM_WORLD, &Stat);
+        MPI_Barrier(MPI_COMM_WORLD);
+
+        if(rank == numtasks-1){
+            MPI_Isend(&local_mat[0], n, MPI_INT, rank-1, 0, MPI_COMM_WORLD, &send_request[0]);
+            // printf("Process %d sending to %d...\n", rank, rank-1);
+            MPI_Irecv(&local_prev[0], n, MPI_INT, rank-1, 0, MPI_COMM_WORLD, &recv_request[0]);
+            // printf("Process %d receiving from %d...\n", rank, rank-1);
         }
-        else if(rank==0){
-            MPI_Send(&local_mat[(rows_per_process-1) * n], n, MPI_INT, rank+1, 0, MPI_COMM_WORLD);
-            // printf("Process %d receiving...", rank);
-            MPI_Recv(&local_prev[(rows_per_process+1) * n], n, MPI_INT, rank+1, 0, MPI_COMM_WORLD, &Stat);
+        else if(rank == 0){
+            MPI_Isend(&local_mat[(rows_per_process-1) * n], n, MPI_INT, rank+1, 0, MPI_COMM_WORLD, &send_request[0]);
+            // printf("Process %d sending to %d...\n", rank, rank+1);
+            MPI_Irecv(&local_prev[(rows_per_process+1) * n], n, MPI_INT, rank+1, 0, MPI_COMM_WORLD, &recv_request[0]);
+            // printf("Process %d receiving from %d...\n", rank, rank+1);
         }
         else{
-            MPI_Send(&local_mat[0], n, MPI_INT, rank-1, 0, MPI_COMM_WORLD);
-            MPI_Send(&local_mat[(rows_per_process-1) * n], n, MPI_INT, rank+1, 0, MPI_COMM_WORLD);
-            // printf("Process %d receiving...", rank);
-            MPI_Recv(&local_prev[0], n, MPI_INT, rank-1, 0, MPI_COMM_WORLD, &Stat);
-            MPI_Recv(&local_prev[(rows_per_process+1) * n], n, MPI_INT, rank+1, 0, MPI_COMM_WORLD, &Stat);
-            
+            MPI_Isend(&local_mat[0], n, MPI_INT, rank-1, 0, MPI_COMM_WORLD, &send_request[0]);
+            MPI_Isend(&local_mat[(rows_per_process-1) * n], n, MPI_INT, rank+1, 0, MPI_COMM_WORLD, &send_request[1]);
+            // printf("Process %d sending to %d and %d...\n", rank, rank-1, rank+1);
+            MPI_Irecv(&local_prev[0], n, MPI_INT, rank-1, 0, MPI_COMM_WORLD, &recv_request[0]);
+            MPI_Irecv(&local_prev[(rows_per_process+1) * n], n, MPI_INT, rank+1, 0, MPI_COMM_WORLD, &recv_request[1]);
+            // printf("Process %d receiving from %d and %d...\n", rank, rank-1, rank+1);
         }
 
+        // Wait for all non-blocking operations to complete
+        if(rank == numtasks-1 || rank == 0){
+            MPI_Wait(&send_request[0], &send_status[0]);
+            MPI_Wait(&recv_request[0], &recv_status[0]);
+        } else {
+            MPI_Waitall(2, send_request, send_status);
+            MPI_Waitall(2, recv_request, recv_status);
+        }
         // update local matrix
         game_of_life(n, local_prev, local_mat, local_counter, local_streak, rows_per_process);
 
