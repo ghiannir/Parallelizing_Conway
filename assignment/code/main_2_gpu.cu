@@ -3,11 +3,11 @@
 #include <cuda_runtime.h>
 #include <omp.h>
 
-#define INFILE "/home/hpc_group_04/Drogato/project/Parallelizing_Conway/input/input.txt"
-#define OUTMAT "/home/hpc_group_04/Drogato/project/Parallelizing_Conway/output/mat.txt"
-#define OUTCNT "/home/hpc_group_04/Drogato/project/Parallelizing_Conway/output/cnt.txt"
-#define OUTSTREAK "/home/hpc_group_04/Drogato/project/Parallelizing_Conway/output/streak.txt"
-#define STATS "/home/hpc_group_04/Drogato/project/Parallelizing_Conway/output/stats_cuda_multi_gpu.csv"
+#define INFILE "../input/input.txt"
+#define OUTMAT "../output/mat.txt"
+#define OUTCNT "../output/cnt.txt"
+#define OUTSTREAK "../output/streak.txt"
+#define STATS "../output/stats_cuda_multi_gpu.csv"
 
 
 struct Error {
@@ -251,7 +251,7 @@ int main(int argc, char * argv[]) {
     fclose(fin);
 
     float elapsedTime = 0;
-    // For now we try to work with only 2 GPU's 
+    
     omp_set_num_threads(2);
     struct Error error = run_cuda_program(mat, counter, streak, n, iter, &elapsedTime);
 

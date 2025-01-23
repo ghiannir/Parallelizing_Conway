@@ -10,7 +10,6 @@
 #define OUTSTREAK "../output/streak_mpi.txt"
 // #define DEBUG
 
-// TODO: farla piu leggibile, si possono togliere gli if inserendo solo somme (i campi nelle celle sono 0 o 1)
 int tot_neighbours(int i, int size, int *table){
     int sum = 0;
     int idx = i+size;

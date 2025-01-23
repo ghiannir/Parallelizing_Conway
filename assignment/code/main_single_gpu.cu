@@ -4,11 +4,11 @@
 #include <stdlib.h>
 #include <cuda_runtime.h>
 
-#define INFILE "/home/hpc_group_04/Drogato/project/Parallelizing_Conway/input/input.txt"
-#define OUTMAT "/home/hpc_group_04/Drogato/project/Parallelizing_Conway/output/mat.txt"
-#define OUTCNT "/home/hpc_group_04/Drogato/project/Parallelizing_Conway/output/cnt.txt"
-#define OUTSTREAK "/home/hpc_group_04/Drogato/project/Parallelizing_Conway/output/streak.txt"
-#define STATS "/home/hpc_group_04/Drogato/project/Parallelizing_Conway/output/stats_cuda.csv"
+#define INFILE "../input/input.txt"
+#define OUTMAT "../output/mat.txt"
+#define OUTCNT "../output/cnt.txt"
+#define OUTSTREAK "../output/streak.txt"
+#define STATS "../output/stats_cuda.csv"
 
 
 
@@ -58,17 +58,7 @@ __global__ void game_iterations(int *dev_mat, int *dev_streak, int *dev_counter,
     dev_mat[idx] = curr;
 }
 
-// __global__ void update(int *dev_mat, int *prev, int dim) {
-//     int x = blockIdx.x * blockDim.x + threadIdx.x;
-//     int y = blockIdx.y * blockDim.y + threadIdx.y;
 
-//     if (x > dim || y > dim)
-//         return;
-
-//     int idx = x * dim + y;
-
-//     prev[idx] = dev_mat[idx];
-// }
 
 
 void printer(int *mat, int *streak, int *counter, int N);
@@ -163,7 +153,7 @@ int main(int argc, char * argv[]) {
 
     gpuErrchk(cudaMemcpy(prev, mat, n * n * sizeof(int), cudaMemcpyHostToDevice));
 
-    // TODO: device block distribution
+    
     int m = 32;
     dim3 blockSize(m, m, 1);
     dim3 gridSize((n + blockSize.x - 1) / blockSize.x, (n + blockSize.y - 1) / blockSize.y, 1);

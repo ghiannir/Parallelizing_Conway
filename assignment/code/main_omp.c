@@ -8,7 +8,6 @@
 #define OUTCNT "../output/cnt.txt"
 #define OUTSTREAK "../output/streak.txt"
 
-// TODO: farla piu leggibile, si possono togliere gli if inserendo solo somme (i campi nelle celle sono 0 o 1)
 int tot_neighbours(int idx, int size, int *table){
     int sum = 0;
 
@@ -48,54 +47,6 @@ int tot_neighbours(int idx, int size, int *table){
 }
 
 
-// void printer(int *mat, int *counter, int *streak, int N){
-//     FILE *f_mat, *f_cnt, *f_streak;
-
-//     f_mat = fopen(OUTMAT, "w");
-//     if (f_mat == NULL) {
-//         printf("Error opening file %s\n", OUTMAT);
-//         return;
-//     }
-//     printf("Printing final state of the board...\n");
-//     for(int i = 0; i < N; i++){
-//         for(int j = 0; j < N; j++){
-//             fprintf(f_mat, "%d ", mat[i*N+j]);
-//         }
-//         fprintf(f_mat, "\n");
-//     }
-//     fclose(f_mat);
-//     printf("Finished printing final state of the board.\n");
-
-//     f_cnt = fopen(OUTCNT, "w");
-//     if (f_cnt == NULL) {
-//         printf("Error opening file %s\n", OUTCNT);
-//         return;
-//     }
-//     printf("Printing overall count of alive generation for single cell...\n");
-//     for(int i = 0; i < N; i++){
-//         for(int j = 0; j < N; j++){
-//             fprintf(f_cnt, "%d ", counter[i*N+j]);
-//         }
-//         fprintf(f_cnt, "\n");
-//     }
-//     fclose(f_cnt);
-//     printf("Finished printing overall count of alive generation for single cell.\n");
-
-//     f_streak = fopen(OUTSTREAK, "w");
-//     if (f_streak == NULL) {
-//         printf("Error opening file %s\n", OUTSTREAK);
-//         return;
-//     }
-//     printf("Printing maximum consecutive alive generations...\n");
-//     for(int i = 0; i < N; i++){
-//         for(int j = 0; j < N; j++){
-//             fprintf(f_streak, "%d ", streak[i*N+j]);
-//         }
-//         fprintf(f_streak, "\n");
-//     }
-//     fclose(f_streak);
-//     printf("Finished printing maximum consecutive alive generations.\n");
-// }
 
 
 void buildMatrix(int n, int * matrix, FILE * input_file) {
